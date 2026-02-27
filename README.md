@@ -1,5 +1,5 @@
 # fluffy-train
-MATLAB Predictive Modeling of Hospital Resource Allocation
+
 
 MATLAB Predictive Modeling of Hospital Resource Allocation
 
@@ -36,13 +36,13 @@ Efficient hospital resource planning is critical for managing patient care, redu
 
 
 ⚙️ Technologies Used
-     MATLAB
-     Machine Learning Toolbox
-     Random Forest (Ensemble Trees)
+   1.  MATLAB
+   2. Machine Learning Toolbox
+   3. Random Forest (Ensemble Trees)
 
 
 📊 Model Output
  The model:
-    Predicts hospital resource demand
-    Compares actual vs predicted values
-    Provides performance metrics for accuracy validation
+   a. Predicts hospital resource demand
+   b. Compares actual vs predicted values
+   c. Provides performance metrics for accuracy validation
