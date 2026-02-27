@@ -43,6 +43,9 @@ Efficient hospital resource planning is critical for managing patient care, redu
 
 📊 Model Output
  The model:
+ 
    a. Predicts hospital resource demand
+   
    b. Compares actual vs predicted values
+   
    c. Provides performance metrics for accuracy validation
