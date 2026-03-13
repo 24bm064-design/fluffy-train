@@ -1,0 +1,78 @@
+%% =========================================================
+%  MATLAB Predictive Modeling of Hospital Resource Allocation
+%  Data format: Numeric matrix (hospital_resource)
+% ==========================================================
+
+clc;
+close all;
+
+%% 1. Display Dataset Size
+fprintf('Dataset size: %d samples, %d features\n', ...
+    size(hospital_resource,1), size(hospital_resource,2));
+
+%% 2. Data Cleaning
+% Remove rows with missing values (NaN)
+hospital_resource = hospital_resource( ...
+    ~any(isnan(hospital_resource),2), :);
+
+%% 3. Define Input Features and Target
+% Assumption:
+% Columns 1 to (end-1) → predictors
+% Last column → resource requirement (beds / ICU / staff)
+
+X = hospital_resource(:, 1:end-1);
+Y = hospital_resource(:, end);
+
+%% 4. Train-Test Split (80% Training, 20% Testing)
+cv = cvpartition(size(X,1), 'HoldOut', 0.2);
+
+X_train = X(training(cv), :);
+Y_train = Y(training(cv));
+
+X_test  = X(test(cv), :);
+Y_test  = Y(test(cv));
+
+%% 5. Train Machine Learning Model
+% Random Forest Regression (Ensemble Trees)
+
+model = fitrensemble( ...
+    X_train, Y_train, ...
+    'Method', 'Bag', ...
+    'NumLearningCycles', 100);
+
+disp('Model training completed successfully.');
+
+%% 6. Predict Resource Requirements
+Y_pred = predict(model, X_test);
+
+%% 7. Model Performance Evaluation
+MAE  = mean(abs(Y_test - Y_pred));
+RMSE = sqrt(mean((Y_test - Y_pred).^2));
+R2   = 1 - sum((Y_test - Y_pred).^2) / sum((Y_test - mean(Y_test)).^2);
+
+fprintf('\nModel Performance:\n');
+fprintf('Mean Absolute Error (MAE)  : %.2f\n', MAE);
+fprintf('Root Mean Square Error (RMSE): %.2f\n', RMSE);
+fprintf('R-squared (R^2)           : %.2f\n', R2);
+
+%% 8. Visualization – Actual vs Predicted
+figure;
+scatter(Y_test, Y_pred, 'filled');
+xlabel('Actual Hospital Resource Requirement');
+ylabel('Predicted Hospital Resource Requirement');
+title('Predictive Modeling of Hospital Resource Allocation');
+grid on;
+
+%% 9. Future Resource Prediction Example
+% Using average historical conditions
+
+future_input = mean(X_train, 1);
+future_resource_prediction = predict(model, future_input);
+
+fprintf('\nPredicted Future Hospital Resource Requirement: %.2f\n', ...
+    future_resource_prediction);
+
+%% 10. Save Trained Model
+save('Hospital_Resource_Predictive_Model.mat', 'model');
+
+disp('Model saved successfully.');
