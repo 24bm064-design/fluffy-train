@@ -1,78 +1,116 @@
 %% =========================================================
-%  MATLAB Predictive Modeling of Hospital Resource Allocation
-%  Data format: Numeric matrix (hospital_resource)
+% MATLAB Predictive Modeling of Hospital Resource Allocation
+% Numeric matrix: hospital_resource
+% Columns assumed:
+% 1 = Nurses
+% 2 = ICU Beds
+% 3 = Flu Cases
+% 4 = Surgeries
 % ==========================================================
 
 clc;
 close all;
+clearvars -except hospital_resource;
 
 %% 1. Display Dataset Size
-fprintf('Dataset size: %d samples, %d features\n', ...
-    size(hospital_resource,1), size(hospital_resource,2));
+[nSamples, nFeatures] = size(hospital_resource);
+fprintf('Dataset contains %d samples and %d features\n', nSamples, nFeatures);
 
 %% 2. Data Cleaning
-% Remove rows with missing values (NaN)
-hospital_resource = hospital_resource( ...
-    ~any(isnan(hospital_resource),2), :);
+hospital_resource = hospital_resource(~any(isnan(hospital_resource),2), :);
 
-%% 3. Define Input Features and Target
-% Assumption:
-% Columns 1 to (end-1) → predictors
-% Last column → resource requirement (beds / ICU / staff)
+%% 3. Extract Individual Variables
+nurses    = hospital_resource(:,1);
+icuBeds   = hospital_resource(:,2);
+fluCases  = hospital_resource(:,3);
+surgeries = hospital_resource(:,4);
 
-X = hospital_resource(:, 1:end-1);
-Y = hospital_resource(:, end);
+%% 4. Combine Data
+data = [nurses icuBeds fluCases surgeries];
 
-%% 4. Train-Test Split (80% Training, 20% Testing)
-cv = cvpartition(size(X,1), 'HoldOut', 0.2);
+%% 5. Train-Test Split (80/20)
+cv = cvpartition(size(data,1),'HoldOut',0.2);
 
-X_train = X(training(cv), :);
-Y_train = Y(training(cv));
+trainData = data(training(cv),:);
+testData  = data(test(cv),:);
 
-X_test  = X(test(cv), :);
-Y_test  = Y(test(cv));
+%% 6. Train Prediction Models (Random Forest)
 
-%% 5. Train Machine Learning Model
-% Random Forest Regression (Ensemble Trees)
+% Predict Nurses
+model_nurse = fitrensemble(trainData(:,2:4), trainData(:,1), ...
+    'Method','Bag','NumLearningCycles',100);
 
-model = fitrensemble( ...
-    X_train, Y_train, ...
-    'Method', 'Bag', ...
-    'NumLearningCycles', 100);
+% Predict ICU Beds
+model_icu = fitrensemble(trainData(:,[1 3 4]), trainData(:,2), ...
+    'Method','Bag','NumLearningCycles',100);
 
-disp('Model training completed successfully.');
+% Predict Flu Cases
+model_flu = fitrensemble(trainData(:,[1 2 4]), trainData(:,3), ...
+    'Method','Bag','NumLearningCycles',100);
 
-%% 6. Predict Resource Requirements
-Y_pred = predict(model, X_test);
+% Predict Surgeries
+model_surg = fitrensemble(trainData(:,1:3), trainData(:,4), ...
+    'Method','Bag','NumLearningCycles',100);
 
-%% 7. Model Performance Evaluation
-MAE  = mean(abs(Y_test - Y_pred));
-RMSE = sqrt(mean((Y_test - Y_pred).^2));
-R2   = 1 - sum((Y_test - Y_pred).^2) / sum((Y_test - mean(Y_test)).^2);
+disp('Model training completed.');
 
-fprintf('\nModel Performance:\n');
-fprintf('Mean Absolute Error (MAE)  : %.2f\n', MAE);
-fprintf('Root Mean Square Error (RMSE): %.2f\n', RMSE);
-fprintf('R-squared (R^2)           : %.2f\n', R2);
+%% 7. Predictions
 
-%% 8. Visualization – Actual vs Predicted
+pred_nurse = predict(model_nurse, testData(:,2:4));
+pred_icu   = predict(model_icu, testData(:,[1 3 4]));
+pred_flu   = predict(model_flu, testData(:,[1 2 4]));
+pred_surg  = predict(model_surg, testData(:,1:3));
+
+%% 8. Performance Evaluation
+
+MAE_nurse = mean(abs(testData(:,1) - pred_nurse));
+MAE_icu   = mean(abs(testData(:,2) - pred_icu));
+MAE_flu   = mean(abs(testData(:,3) - pred_flu));
+MAE_surg  = mean(abs(testData(:,4) - pred_surg));
+
+fprintf('\nMean Absolute Error (MAE)\n');
+fprintf('Nurses    : %.2f\n', MAE_nurse);
+fprintf('ICU Beds  : %.2f\n', MAE_icu);
+fprintf('Flu Cases : %.2f\n', MAE_flu);
+fprintf('Surgeries : %.2f\n', MAE_surg);
+
+%% 9. Visualization (Actual vs Predicted)
+
 figure;
-scatter(Y_test, Y_pred, 'filled');
-xlabel('Actual Hospital Resource Requirement');
-ylabel('Predicted Hospital Resource Requirement');
-title('Predictive Modeling of Hospital Resource Allocation');
-grid on;
+hold on;
 
-%% 9. Future Resource Prediction Example
-% Using average historical conditions
+% Nurses
+plot(testData(:,1),'r','LineWidth',2)
+plot(pred_nurse,'r--','LineWidth',2)
 
-future_input = mean(X_train, 1);
-future_resource_prediction = predict(model, future_input);
+% ICU Beds
+plot(testData(:,2),'b','LineWidth',2)
+plot(pred_icu,'b--','LineWidth',2)
 
-fprintf('\nPredicted Future Hospital Resource Requirement: %.2f\n', ...
-    future_resource_prediction);
+% Flu Cases
+plot(testData(:,3),'g','LineWidth',2)
+plot(pred_flu,'g--','LineWidth',2)
 
-%% 10. Save Trained Model
-save('Hospital_Resource_Predictive_Model.mat', 'model');
+% Surgeries
+plot(testData(:,4),'m','LineWidth',2)
+plot(pred_surg,'m--','LineWidth',2)
 
-disp('Model saved successfully.');
+xlabel('Sample Index')
+ylabel('Hospital Resource Count')
+
+title('Actual vs Predicted Hospital Resource Allocation')
+
+legend('Nurses (Actual)','Nurses (Predicted)', ...
+       'ICU Beds (Actual)','ICU Beds (Predicted)', ...
+       'Flu Cases (Actual)','Flu Cases (Predicted)', ...
+       'Surgeries (Actual)','Surgeries (Predicted)')
+
+grid on
+hold off
+
+%% 10. Save Trained Models
+
+save('Hospital_Resource_Prediction_Models.mat', ...
+     'model_nurse','model_icu','model_flu','model_surg');
+
+disp('Models saved successfully.');
