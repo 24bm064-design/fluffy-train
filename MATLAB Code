@@ -105,8 +105,8 @@ legend('Nurses (Actual)','Nurses (Predicted)', ...
        'Flu Cases (Actual)','Flu Cases (Predicted)', ...
        'Surgeries (Actual)','Surgeries (Predicted)')
 
-grid on
-hold off
+grid on; 
+hold off;
 
 %% 10. Save Trained Models
 
